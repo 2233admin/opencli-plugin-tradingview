@@ -1,0 +1,6 @@
+{
+  "name": "tradingview",
+  "version": "0.1.0",
+  "description": "TradingView adapter for OpenCLI (chart navigation, symbol panels, market views)",
+  "opencli": ">=1.8.0"
+}

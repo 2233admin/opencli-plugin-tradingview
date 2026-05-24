@@ -1,0 +1,21 @@
+{
+  "name": "@claudeqwq/opencli-plugin-tradingview",
+  "version": "0.1.0-alpha.1",
+  "type": "module",
+  "description": "TradingView adapter for OpenCLI — chart navigation, symbol panels, market views",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://git.xart.top:8418/claudeQWQ/opencli-plugin-tradingview.git"
+  },
+  "keywords": [
+    "opencli",
+    "opencli-plugin",
+    "tradingview",
+    "trading",
+    "browser-automation"
+  ],
+  "peerDependencies": {
+    "@jackwener/opencli": ">=1.8.0"
+  }
+}

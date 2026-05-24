@@ -1,0 +1,11 @@
+node_modules/
+*.log
+.DS_Store
+dist/
+.env
+.env.local
+
+# transient transpile artifacts produced by `opencli plugin install/update`
+# (we ship .ts only; opencli/esbuild produces .js on the host at install time)
+*.js
+package-lock.json
