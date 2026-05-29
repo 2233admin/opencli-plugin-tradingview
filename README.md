@@ -1,7 +1,8 @@
 # opencli-plugin-tradingview
 
-TradingView adapter for [OpenCLI](https://github.com/jackwener/opencli). Two kinds of commands:
+TradingView adapter for [OpenCLI](https://github.com/jackwener/opencli). Three kinds of commands:
 
+- **Chart automation control** — drive a persistent chart tab through the Charting-Library widget API (`window.TradingViewApi.activeChart()`): switch symbol/timeframe, add/remove indicators, draw trendlines/horizontal lines, screenshot, save/load layouts, and batch-scan a basket for anomalies. On-demand, single command per call. No order placement — read/analyse/annotate only.
 - **Navigation** — drive a real TradingView session through the bound browser tab (chart navigation, symbol panels, market views). Returns `{url, title}`.
 - **Extraction** — return structured data (symbol news, fundamentals, computed technical signals, macro calendar) so any LLM/agent can consume TradingView's surface as rows, not screenshots.
 
@@ -9,9 +10,10 @@ Granularity follows the OpenCLI convention: **one endpoint = one file = one data
 
 ## Status
 
+- **Chart automation control** (`chart`, `indicator`, `drawing`, `capture`, `layout`, `scan`) — verified live against the bound chart: symbol/timeframe switch + read-back, indicator add/list/remove, hline/trendline draw + clear, screenshot-to-file, saved-layout list/load, and basket scan with z-score anomaly flagging. Drives the Charting-Library widget API directly. **No order placement** — analysis and annotation only.
 - **Extraction adapters** (`news`, `financials`, `technicals`, `econ-calendar`, `earnings`) — verified end-to-end against live TradingView on both a US ticker (`AAPL`) and an A-share (`600519`). These return real rows.
 - **Navigation commands** (`navigate`, `view`, `market`) — open/drive tabs and read `document.title`. `navigate` is a write op (preserves chart layout); pass `--no-vis-check` if a visibility-state assertion fires when the browser window loses focus.
-- **Known gaps**: `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
+- **Known gaps**: alerts (`_alertService`) deferred — needs a deeper probe; `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
 
 ## Install
 
@@ -30,6 +32,19 @@ opencli plugin install git+https://github.com/2233admin/opencli-plugin-tradingvi
 ```
 
 ## Commands
+
+### Chart automation control (drive the bound chart via the widget API)
+
+These commands operate on a persistent automation tab that owns its own chart. The first command navigates it to `TV_LAYOUT` (cookies are shared with your logged-in Chrome profile, so saved layouts load authenticated); subsequent commands reuse the live tab, preserving symbol/studies/drawings between calls. All drive the **stable, versioned** `window.TradingViewApi.activeChart()` API — no hashed CSS, no DOM clicking.
+
+| Command                                          | File         | Output columns                    | Description                                                                          |
+| ------------------------------------------------ | ------------ | --------------------------------- | ------------------------------------------------------------------------------------ |
+| `tradingview chart [symbol] [--interval]`        | chart.ts     | `symbol, resolution`              | Switch symbol and/or timeframe (write op, preserves layout). Reads state back.       |
+| `tradingview indicator <action> [...]`           | indicator.ts | `action, id, name`                | `list`/`add`/`remove`/`clear` studies (RSI, MACD, MA, BB, …) via `--name`/`--inputs` |
+| `tradingview drawing <action> [...]`             | drawing.ts   | `action, id, detail`              | `list`/`hline`/`trendline`/`remove`/`clear` shapes (`--price`, `--points`, `--id`)   |
+| `tradingview capture [--path] [--img-format]`    | capture.ts   | `symbol, path`                    | Screenshot the chart, tagged with the current symbol (reuses openCLI's screenshot)   |
+| `tradingview layout <action> [--id/--name]`      | layout.ts    | `id, name, symbol, resolution`    | `list`/`load` the account's saved chart layouts                                      |
+| `tradingview scan <symbols> [...]`               | scan.ts      | `symbol, close, change_pct, zscore, anomaly, bars, shot` | Batch-inspect a basket (last bar, change%, return z-score anomaly, optional screenshot); restores the original symbol when done |
 
 ### Extraction (return structured rows)
 
@@ -54,6 +69,20 @@ Shared utilities live in `_helpers.ts` (`_` prefix marks internal, not registere
 ### Examples
 
 ```bash
+# Chart automation control — drive the persistent chart tab
+opencli tradingview chart NASDAQ:AAPL --interval 1h      # switch symbol + timeframe
+opencli tradingview chart OKX:ETHUSD --interval 15m      # crypto, 15-minute
+opencli tradingview indicator add --name "Relative Strength Index" --inputs "[21]"
+opencli tradingview indicator list                       # -> [{id, name}]
+opencli tradingview indicator remove --id <id>
+opencli tradingview drawing hline --price 3500           # horizontal line at a level
+opencli tradingview drawing trendline --points "1716800000,3400,1716886400,3600"
+opencli tradingview drawing list                         # -> [{id, detail}]
+opencli tradingview capture --img-format png             # screenshot -> file path
+opencli tradingview layout list                          # saved layouts
+opencli tradingview layout load --name "My ETH setup"
+opencli tradingview scan "NASDAQ:AAPL,600519,OKX:ETHUSD" --lookback 30 --z-threshold 2 --capture
+
 # Extraction — structured rows
 opencli browser --workspace bound:tv-chart tradingview news 600519
 opencli browser --workspace bound:tv-chart tradingview financials NASDAQ:AAPL
