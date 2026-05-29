@@ -1,8 +1,8 @@
 {
   "name": "@claudeqwq/opencli-plugin-tradingview",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
-  "description": "TradingView adapter for OpenCLI — chart automation control (symbol/timeframe switch, indicators, drawings, screenshot, saved layouts, batch anomaly scan via the Charting-Library widget API), plus navigation and structured extraction adapters (news, financials, technicals, macro calendar, earnings calendar)",
+  "description": "TradingView adapter for OpenCLI — chart automation control (symbol/timeframe switch, indicators, drawings, screenshot, saved layouts, batch anomaly scan, reading live study values for built-in and open-source Pine indicators via the Charting-Library widget API), plus navigation and structured extraction adapters (news, financials, technicals, macro calendar, earnings calendar)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

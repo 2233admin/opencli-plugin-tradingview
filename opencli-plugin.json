@@ -1,6 +1,6 @@
 {
   "name": "tradingview",
-  "version": "0.1.0",
-  "description": "TradingView adapter for OpenCLI (chart navigation, symbol panels, market views)",
+  "version": "0.5.0",
+  "description": "TradingView adapter for OpenCLI — chart automation control, navigation, and structured extraction",
   "opencli": ">=1.8.0"
 }

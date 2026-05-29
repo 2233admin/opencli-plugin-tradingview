@@ -10,7 +10,7 @@ Granularity follows the OpenCLI convention: **one endpoint = one file = one data
 
 ## Status
 
-- **Chart automation control** (`chart`, `indicator`, `drawing`, `capture`, `layout`, `scan`) — verified live against the bound chart: symbol/timeframe switch + read-back, indicator add/list/remove, hline/trendline draw + clear, screenshot-to-file, saved-layout list/load, and basket scan with z-score anomaly flagging. Drives the Charting-Library widget API directly. **No order placement** — analysis and annotation only.
+- **Chart automation control** (`chart`, `indicator`, `drawing`, `capture`, `layout`, `scan`, `readings`) — verified live against the bound chart: symbol/timeframe switch + read-back, indicator add/list/remove, hline/trendline draw + clear, screenshot-to-file, saved-layout list/load, basket scan with z-score anomaly flagging, and reading the live plotted values of any loaded study (built-in or open-source Pine). Drives the Charting-Library widget API directly. **No order placement** — analysis and annotation only.
 - **Extraction adapters** (`news`, `financials`, `technicals`, `econ-calendar`, `earnings`) — verified end-to-end against live TradingView on both a US ticker (`AAPL`) and an A-share (`600519`). These return real rows.
 - **Navigation commands** (`navigate`, `view`, `market`) — open/drive tabs and read `document.title`. `navigate` is a write op (preserves chart layout); pass `--no-vis-check` if a visibility-state assertion fires when the browser window loses focus.
 - **Known gaps**: alerts (`_alertService`) deferred — needs a deeper probe; `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
@@ -45,6 +45,7 @@ These commands operate on a persistent automation tab that owns its own chart. T
 | `tradingview capture [--path] [--img-format]`    | capture.ts   | `symbol, path`                    | Screenshot the chart, tagged with the current symbol (reuses openCLI's screenshot)   |
 | `tradingview layout <action> [--id/--name]`      | layout.ts    | `id, name, symbol, resolution`    | `list`/`load` the account's saved chart layouts                                      |
 | `tradingview scan <symbols> [...]`               | scan.ts      | `symbol, close, change_pct, zscore, anomaly, bars, shot` | Batch-inspect a basket (last bar, change%, return z-score anomaly, optional screenshot); restores the original symbol when done |
+| `tradingview readings [--id] [--all-plots]`      | readings.ts  | `study, id, plot, value, time`    | Read the **current plotted values** of every loaded study — built-in or open-source/community Pine — via the internal model |
 
 ### Extraction (return structured rows)
 
@@ -82,6 +83,9 @@ opencli tradingview capture --img-format png             # screenshot -> file pa
 opencli tradingview layout list                          # saved layouts
 opencli tradingview layout load --name "My ETH setup"
 opencli tradingview scan "NASDAQ:AAPL,600519,OKX:ETHUSD" --lookback 30 --z-threshold 2 --capture
+opencli tradingview readings                             # current values of every loaded study
+opencli tradingview readings --id "MACD"                # filter by study id or name substring
+opencli tradingview readings --all-plots                # include colorer/hidden/unnamed internal plots
 
 # Extraction — structured rows
 opencli browser --workspace bound:tv-chart tradingview news 600519
