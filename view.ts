@@ -1,9 +1,11 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { TRADINGVIEW_DOMAIN, normalizeSymbol } from './_helpers.js';
 
+// 'news' is split out into its own dedicated `tradingview news` adapter (one
+// endpoint = one file, per openCLI convention). Remaining panels still funnel
+// through `view` until each gets its own extraction adapter.
 const VIEW_PANELS = [
   'overview',
-  'news',
   'ideas',
   'financials-overview',
   'technicals',

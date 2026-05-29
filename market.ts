@@ -7,7 +7,7 @@ const MARKETS: Record<string, MarketBuilder> = {
   'heatmap-stock': (region = 'us') => `https://www.tradingview.com/heatmap/stock/?market=${region}`,
   'heatmap-crypto': () => 'https://www.tradingview.com/heatmap/crypto/',
   'heatmap-etf': () => 'https://www.tradingview.com/heatmap/etf/',
-  'econ-calendar': () => 'https://www.tradingview.com/economic-calendar/',
+  // 'econ-calendar' split out into its own `tradingview econ-calendar` data adapter (browser:false JSON).
   'earnings-calendar': (region = 'us') => `https://www.tradingview.com/earnings-calendar/?countries=${region}`,
   bonds: () => 'https://www.tradingview.com/markets/bonds/prices-all/',
   options: (_region, symbol) => {
