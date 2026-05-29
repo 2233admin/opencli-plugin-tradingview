@@ -11,6 +11,7 @@ Granularity follows the OpenCLI convention: **one endpoint = one file = one data
 ## Status
 
 - **Chart automation control** (`chart`, `indicator`, `drawing`, `capture`, `layout`, `scan`, `readings`) — verified live against the bound chart: symbol/timeframe switch + read-back, indicator add/list/remove, hline/trendline draw + clear, screenshot-to-file, saved-layout list/load, basket scan with z-score anomaly flagging, and reading the live plotted values of any loaded study (built-in or open-source Pine). Drives the Charting-Library widget API directly. **No order placement** — analysis and annotation only.
+- **Open-source Pine load** (`indicator add --pine "PUB;<hash>"`) — verified end-to-end: `createStudy(name)` resolves built-in studies by display name only ("unexpected study id" for community scripts), so `--pine` resolves the script's `metaInfo` server-side via the study repository (`repo.findById({type:'pine', pineId, pineVersion})` → server compile) and inserts it through the internal model (`model._insertStudy`), which allocates a real, removable entity id (the id settles asynchronously, so the command polls until it appears). Works for **any public script id whether or not it is already on the chart** and needs no saved layout. Unattended — no DOM clicking, no UI search.
 - **Extraction adapters** (`news`, `financials`, `technicals`, `econ-calendar`, `earnings`) — verified end-to-end against live TradingView on both a US ticker (`AAPL`) and an A-share (`600519`). These return real rows.
 - **Navigation commands** (`navigate`, `view`, `market`) — open/drive tabs and read `document.title`. `navigate` is a write op (preserves chart layout); pass `--no-vis-check` if a visibility-state assertion fires when the browser window loses focus.
 - **Known gaps**: alerts (`_alertService`) deferred — needs a deeper probe; `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
@@ -40,7 +41,7 @@ These commands operate on a persistent automation tab that owns its own chart. T
 | Command                                          | File         | Output columns                    | Description                                                                          |
 | ------------------------------------------------ | ------------ | --------------------------------- | ------------------------------------------------------------------------------------ |
 | `tradingview chart [symbol] [--interval]`        | chart.ts     | `symbol, resolution`              | Switch symbol and/or timeframe (write op, preserves layout). Reads state back.       |
-| `tradingview indicator <action> [...]`           | indicator.ts | `action, id, name`                | `list`/`add`/`remove`/`clear` studies (RSI, MACD, MA, BB, …) via `--name`/`--inputs` |
+| `tradingview indicator <action> [...]`           | indicator.ts | `action, id, name`                | `list`/`add`/`remove`/`clear` studies. Built-in by `--name`/`--inputs` (RSI, MACD, MA, BB, …); **any public open-source Pine** by `--pine "PUB;<hash>"` (`--pine-version`), loaded or not |
 | `tradingview drawing <action> [...]`             | drawing.ts   | `action, id, detail`              | `list`/`hline`/`trendline`/`remove`/`clear` shapes (`--price`, `--points`, `--id`)   |
 | `tradingview capture [--path] [--img-format]`    | capture.ts   | `symbol, path`                    | Screenshot the chart, tagged with the current symbol (reuses openCLI's screenshot)   |
 | `tradingview layout <action> [--id/--name]`      | layout.ts    | `id, name, symbol, resolution`    | `list`/`load` the account's saved chart layouts                                      |
@@ -74,6 +75,8 @@ Shared utilities live in `_helpers.ts` (`_` prefix marks internal, not registere
 opencli tradingview chart NASDAQ:AAPL --interval 1h      # switch symbol + timeframe
 opencli tradingview chart OKX:ETHUSD --interval 15m      # crypto, 15-minute
 opencli tradingview indicator add --name "Relative Strength Index" --inputs "[21]"
+opencli tradingview indicator add --pine "PUB;<hash>"    # load any public open-source Pine by scriptIdPart
+opencli tradingview indicator add --pine "PUB;<hash>" --pine-version 2 --inputs "[12,26,9]"
 opencli tradingview indicator list                       # -> [{id, name}]
 opencli tradingview indicator remove --id <id>
 opencli tradingview drawing hline --price 3500           # horizontal line at a level
