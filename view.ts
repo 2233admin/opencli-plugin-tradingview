@@ -45,7 +45,7 @@ cli({
     } else {
       await page.goto(url);
     }
-    await page.wait({ time: 3000 });
+    await page.wait({ time: 3 });
     const title = await page.evaluate<string>('document.title');
     return [{ symbol: sym, panel, url, title }];
   },
