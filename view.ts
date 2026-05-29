@@ -1,14 +1,14 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { TRADINGVIEW_DOMAIN, normalizeSymbol } from './_helpers.js';
 
-// 'news' and 'financials-overview' are split out into dedicated extraction
-// adapters (`tradingview news`, `tradingview financials`) — one endpoint = one
-// file, per openCLI convention. Remaining panels still funnel through `view`
-// until each gets its own extraction adapter.
+// 'news', 'financials-overview' and 'technicals' are split out into dedicated
+// extraction adapters (`tradingview news`, `tradingview financials`,
+// `tradingview technicals`) — one endpoint = one file, per openCLI convention.
+// Remaining panels still funnel through `view` until each gets its own
+// extraction adapter.
 const VIEW_PANELS = [
   'overview',
   'ideas',
-  'technicals',
   'forecast',
   'minds',
 ] as const;
@@ -16,7 +16,7 @@ const VIEW_PANELS = [
 cli({
   site: 'tradingview',
   name: 'view',
-  description: 'Open a TradingView symbol-level panel (news/ideas/financials/technicals/forecasts/minds) in a NEW tab',
+  description: 'Open a TradingView symbol-level panel (overview/ideas/forecast/minds) in a NEW tab',
   access: 'read',
   domain: TRADINGVIEW_DOMAIN,
   strategy: Strategy.COOKIE,
