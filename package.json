@@ -1,8 +1,8 @@
 {
   "name": "@claudeqwq/opencli-plugin-tradingview",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0",
   "type": "module",
-  "description": "TradingView adapter for OpenCLI — chart navigation, symbol panels, market views",
+  "description": "TradingView adapter for OpenCLI — chart navigation, symbol panels, market views, plus structured extraction adapters (news, financials, technicals, macro calendar)",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
