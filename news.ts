@@ -34,8 +34,13 @@ cli({
       await page.wait({ time: 3 });
     }
 
-    // Article anchors start with /news/. Each card innerText is "date\nsource\nheadline".
-    // Key off the stable href prefix — TV's class hashes rotate on every deploy.
+    // Article anchors start with /news/. innerText is "date\nprovider\nheadline" (3 lines),
+    // so ordinal indexing is fragile — key off semantic tags/attrs instead. The hash SUFFIX
+    // on TV's CSS-module classes rotates per deploy (provider-McDF5yNM), but the readable
+    // PREFIX is stable, so [class*="provider"] survives. Verified live 2026-05-30:
+    //   date     <- <time datetime="...GMT"> (RFC, machine-parseable; fallback title attr)
+    //   source   <- [class*="provider"] innerText (the provider span)
+    //   headline <- [data-overflow-tooltip-text] attr (fallback: last innerText line)
     const rows = await page.evaluate<Array<{ date: string; source: string; headline: string; url: string }>>(`(() => {
       const out = [];
       const seen = new Set();
@@ -43,14 +48,20 @@ cli({
         const href = a.getAttribute('href');
         if (!href || seen.has(href)) return;
         seen.add(href);
-        const lines = (a.innerText || '').split('\\n').map(s => s.trim()).filter(Boolean);
-        if (lines.length < 2) return;
-        const date = lines[0] || '';
-        const source = lines[1] || '';
-        const headline = lines.slice(2).join(' ') || lines[1] || '';
+        const t = a.querySelector('time');
+        const date = t ? (t.getAttribute('datetime') || t.getAttribute('title') || '') : '';
+        const prov = a.querySelector('[class*="provider"]');
+        const source = prov ? (prov.innerText || prov.textContent || '').trim() : '';
+        const tip = a.querySelector('[data-overflow-tooltip-text]');
+        let headline = (tip && tip.getAttribute('data-overflow-tooltip-text')) || '';
+        if (!headline) {
+          const lines = (a.innerText || '').split('\\n').map(s => s.trim()).filter(Boolean);
+          headline = lines.length ? lines[lines.length - 1] : '';
+        }
+        if (!headline) return;
         out.push({
           date,
-          source: lines.length >= 3 ? source : '',
+          source,
           headline,
           url: 'https://www.tradingview.com' + href,
         });
