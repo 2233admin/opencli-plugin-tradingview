@@ -166,12 +166,18 @@ cli({
       if (!id) throw new ArgumentError('order cancel requires --id', 'List ids via: tradingview order orders');
       const res = await runBroker(
         page,
+        // Poll (25ms) until the order leaves working/placing, instead of a fixed settle
+        // wait — confirms cancel as fast as the broker reflects it (~0.3s typical, ~2s cap).
         `const r = await ab.cancelOrder(${jsLit(id)});
-         await new Promise((res2) => setTimeout(res2, 1500));
-         const left = await Promise.resolve(ab.orders());
-         const o = (Array.isArray(left) ? left : []).find((o) => String(o.id) === ${jsLit(id)});
-         // A canceled order STAYS in orders() with status=1; it's only "still working" at status 6/4.
-         const still = !!(o && (o.status === 6 || o.status === 4));
+         let still = true;
+         for (let k = 0; k < 80; k++) {
+           const left = await Promise.resolve(ab.orders());
+           const o = (Array.isArray(left) ? left : []).find((o) => String(o.id) === ${jsLit(id)});
+           // A canceled order STAYS in orders() with status=1; it's only "still working" at status 6/4.
+           still = !!(o && (o.status === 6 || o.status === 4));
+           if (!still) break;
+           await new Promise((res2) => setTimeout(res2, 25));
+         }
          return { r: wv(r), still };`,
       );
       if (!res.ok) throw connErr(res);
@@ -188,10 +194,15 @@ cli({
          const pos = list.find((p) => String(p.symbol) === ${jsLit(sym)});
          if (!pos) return { closed: false, reason: 'no open position for ' + ${jsLit(sym)} };
          const r = await ab.closePosition(pos.id != null ? pos.id : pos, undefined, undefined);
-         await new Promise((res2) => setTimeout(res2, 1500));
-         const after = await Promise.resolve(ab.positions());
-         // A flattened position can linger with qty=0; only a nonzero qty means still open.
-         const left = (Array.isArray(after) ? after : []).some((p) => String(p.symbol) === ${jsLit(sym)} && p.qty);
+         // Poll (25ms) until the position is flat, instead of a fixed settle wait.
+         let left = true;
+         for (let k = 0; k < 80; k++) {
+           const after = await Promise.resolve(ab.positions());
+           // A flattened position can linger with qty=0; only a nonzero qty means still open.
+           left = (Array.isArray(after) ? after : []).some((p) => String(p.symbol) === ${jsLit(sym)} && p.qty);
+           if (!left) break;
+           await new Promise((res2) => setTimeout(res2, 25));
+         }
          return { closed: !left, r: wv(r) };`,
         18000,
       );
@@ -270,12 +281,19 @@ cli({
          return { blocked: true, isDemo, reason: 'real-account fire needs --confirm' };
        }
        const r = await ab.placeOrder(order);
-       await new Promise((res2) => setTimeout(res2, 1500));
-       const ords = await Promise.resolve(ab.orders());
-       const poss = await Promise.resolve(ab.positions());
-       // Resting order = LIVE working/placing (status 6/4); filled order -> nonzero position.
-       const oList = (Array.isArray(ords) ? ords : []).filter((o) => String(o.symbol) === order.symbol && (o.status === 6 || o.status === 4));
-       const pList = (Array.isArray(poss) ? poss : []).filter((p) => String(p.symbol) === order.symbol && p.qty);
+       // Poll (25ms) until the order is observable as either a resting working order or a
+       // filled position, instead of a fixed settle wait. Breaks as soon as one appears
+       // (~0.3-0.5s typical); falls through after ~2s only if nothing landed (rejected).
+       let oList = [], pList = [];
+       for (let k = 0; k < 80; k++) {
+         const ords = await Promise.resolve(ab.orders());
+         const poss = await Promise.resolve(ab.positions());
+         // Resting order = LIVE working/placing (status 6/4); filled order -> nonzero position.
+         oList = (Array.isArray(ords) ? ords : []).filter((o) => String(o.symbol) === order.symbol && (o.status === 6 || o.status === 4));
+         pList = (Array.isArray(poss) ? poss : []).filter((p) => String(p.symbol) === order.symbol && p.qty);
+         if (oList.length || pList.length) break;
+         await new Promise((res2) => setTimeout(res2, 25));
+       }
        return { isDemo, place: wv(r), placedOrders: oList, placedPositions: pList };`,
       18000,
     );
