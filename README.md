@@ -14,7 +14,7 @@ Granularity follows the OpenCLI convention: **one endpoint = one file = one data
 - **Open-source Pine load** (`indicator add --pine "PUB;<hash>"`) — verified end-to-end: `createStudy(name)` resolves built-in studies by display name only ("unexpected study id" for community scripts), so `--pine` resolves the script's `metaInfo` server-side via the study repository (`repo.findById({type:'pine', pineId, pineVersion})` → server compile) and inserts it through the internal model (`model._insertStudy`), which allocates a real, removable entity id (the id settles asynchronously, so the command polls until it appears). Works for **any public script id whether or not it is already on the chart** and needs no saved layout. Unattended — no DOM clicking, no UI search.
 - **Extraction adapters** (`news`, `financials`, `technicals`, `econ-calendar`, `earnings`) — verified end-to-end against live TradingView on both a US ticker (`AAPL`) and an A-share (`600519`). These return real rows.
 - **Navigation commands** (`navigate`, `view`, `market`) — open/drive tabs and read `document.title`. `navigate` is a write op (preserves chart layout); pass `--no-vis-check` if a visibility-state assertion fires when the browser window loses focus.
-- **Known gaps**: alerts (`_alertService`) deferred — needs a deeper probe; `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
+- **Known gaps**: `view --panel forecast` (analyst price targets) is SVG-rendered and not cleanly scrapable yet; `view` panels `ideas`/`minds` are navigation-only (no structured extraction).
 
 ## Install
 
@@ -57,6 +57,10 @@ These commands operate on a persistent automation tab that owns its own chart. T
 | `tradingview technicals <symbol>`    | technicals.ts    | `section, verdict, sell, neutral, buy`            | Computed technical signals (Oscillators / Moving Averages / Summary)        |
 | `tradingview econ-calendar`          | econ-calendar.ts | `date, country, title, importance, actual, …`     | Macro economic calendar (no browser/login — hits the widget JSON endpoint)  |
 | `tradingview earnings`               | earnings.ts      | `symbol, name, date, eps_estimate, eps_last, market_cap` | Upcoming earnings calendar for a region (no browser/login — hits the scanner JSON endpoint) |
+| `tradingview screen-cn`              | screen-cn.ts     | `symbol, name, price, change_pct, volume, market_cap, pe, dividend` | A-share market movers via scanner API: large-cap/active/gainers/losers/best-performing/high-dividend/all-stocks (no browser/login — scanner endpoint) |
+| `tradingview alert <action>`         | alert.ts         | `alert_id, symbol, price, condition, status`             | `list`/`create`/`delete` price alerts via the REST API (persistent chart tab) |
+| `tradingview alert-batch <action> <csv>` | alert-batch.ts | `action, symbol, alert_id, price, status`                | Batch deploy/validate/delete from CSV (`action=deploy|validate|delete|dry-run`, `--csv` or stdin `-`) |
+| `tradingview watchlist <action>`     | watchlist.ts      | `index, name, symbols, symbols_count`                   | `list`/`add`/`remove`/`rename` lists; CSV export via `--export` |
 
 ### Navigation (open/drive tabs, return `{url, title}`)
 
@@ -97,6 +101,26 @@ opencli browser --workspace bound:tv-chart tradingview technicals 600519
 opencli tradingview econ-calendar --countries US,CN,EU,JP --days 7 --min-importance 1
 opencli tradingview earnings --region america --days 7 --limit 50
 opencli tradingview earnings --region china --days 14
+
+# Alerts
+opencli tradingview alert list                                  # list all alerts
+opencli tradingview alert create --symbol SSE:600519 --price 1500 --condition cross_up --message "Moutai breakout"
+opencli tradingview alert delete --id 12345
+opencli tradingview alert-batch deploy alerts.csv              # CSV: symbol,condition,price,message,webhook,expire_days,currency,once
+opencli tradingview alert-batch validate alerts.csv             # validate without creating
+opencli tradingview alert-batch dry-run alerts.csv              # show what would be created
+cat alerts.csv | opencli tradingview alert-batch deploy -       # stdin input
+
+# A-share screen (no browser needed)
+opencli tradingview screen-cn --subtype large-cap --limit 50
+opencli tradingview screen-cn active
+opencli tradingview screen-cn gainers
+opencli tradingview screen-cn high-dividend
+
+# Canary (drift detection before real runs)
+opencli tradingview canary                                     # probe 5 pages, restore layout
+opencli tradingview canary --skip pine,market                  # skip two probes
+opencli tradingview canary --tsv ./canary.tsv                   # append TSV log
 
 # Navigation
 opencli browser --workspace bound:tv-chart tradingview navigate 600519        # A-share auto-prefix: 600519 -> SSE:600519
