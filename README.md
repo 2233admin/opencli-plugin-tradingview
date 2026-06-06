@@ -32,6 +32,38 @@ opencli plugin install git+https://git.xart.top:8418/claudeQWQ/opencli-plugin-tr
 opencli plugin install git+https://github.com/2233admin/opencli-plugin-tradingview.git
 ```
 
+## Unified CLI wrapper
+
+This fork also ships a small `tv` wrapper that normalizes the command surface across backends:
+
+```bash
+# Default backend: OpenCLI browser/cookie session
+npm run tv -- config set layout afALGzKj
+npm run tv -- status
+npm run tv -- chart NASDAQ:AAPL --interval 1h
+npm run tv -- readings
+
+# Fallback backends
+npm run tv -- --backend cdp quote      # tradingview-mcp-jackson CLI / localhost:9222
+npm run tv -- --backend mcp quote      # alias for the CDP-compatible CLI path
+npm run tv -- --backend bbx status     # forwards to BBX: bbx tv status
+```
+
+Backends:
+
+| Backend | Purpose |
+| --- | --- |
+| `opencli` | Default. Reuses browser cookie/session through OpenCLI and this plugin. |
+| `cdp` | Calls `tradingview-mcp-jackson`'s CLI (`TV_CDP_CLI`) against a CDP target. |
+| `mcp` | CLI-compatible alias for the CDP/MCP feature set. |
+| `bbx` | Forwards to legacy BBX tooling (`TV_BBX_CMD`, default `bbx`). |
+
+Persist the active TradingView layout once so commands do not fall back to a private default layout:
+
+```bash
+npm run tv -- config set layout <your-layout-id>
+```
+
 ## Commands
 
 ### Chart automation control (drive the bound chart via the widget API)

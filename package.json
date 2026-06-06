@@ -3,6 +3,14 @@
   "version": "0.7.0",
   "type": "module",
   "description": "TradingView adapter for OpenCLI — chart automation control (symbol/timeframe switch, indicators incl. loading any public open-source Pine script by scriptIdPart, drawings, screenshot, saved layouts, batch anomaly scan, reading live study values for built-in and open-source Pine indicators via the Charting-Library widget API), plus navigation and structured extraction adapters (news, financials, technicals, macro calendar, earnings calendar)",
+  "bin": {
+    "tv": "bin/tv.js",
+    "tradingview-cli": "bin/tv.js"
+  },
+  "scripts": {
+    "tv": "node bin/tv.js",
+    "test:wrapper": "node bin/tv.js --dry-run status && node bin/tv.js --dry-run --backend cdp quote && node bin/tv.js --dry-run --backend bbx status"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
