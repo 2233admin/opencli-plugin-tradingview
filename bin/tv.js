@@ -36,6 +36,8 @@ Common commands:
   tv status
   tv chart NASDAQ:AAPL --interval 1h
   tv readings
+  tv watch NASDAQ:AAPL --interval 1h --once
+  tv watch NASDAQ:AAPL --interval 1h --every 60
   tv capture --path ./shot.png
   tv indicator list
   tv drawing list
@@ -106,6 +108,25 @@ function run(command, args, env, dryRun) {
   return result.status ?? 1;
 }
 
+function runCapture(command, args, env) {
+  const platformCommand = commandForPlatform(command, args);
+  const result = spawnSync(platformCommand.executable, platformCommand.args, {
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+
+  if (result.error) {
+    return { ok: false, status: 1, stdout: '', stderr: result.error.message };
+  }
+
+  return {
+    ok: (result.status ?? 1) === 0,
+    status: result.status ?? 1,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
+
 function handleConfig(args) {
   const config = readConfig();
   if (args[0] === 'get' || args.length === 0) {
@@ -148,6 +169,148 @@ function bbxCommand(command, args) {
   return [bbx, ['tv', command, ...args], {}];
 }
 
+function readOptionValue(args, index, flag) {
+  const value = args[index + 1];
+  if (!value || value.startsWith('--')) throw new Error(`${flag} requires a value`);
+  return value;
+}
+
+function parseWatchArgs(args) {
+  const options = {
+    symbol: undefined,
+    interval: '1h',
+    every: 60,
+    once: false,
+    sources: ['chart', 'readings', 'technicals', 'news', 'financials'],
+  };
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--symbol') options.symbol = readOptionValue(args, i, arg);
+    else if (arg === '--interval') options.interval = readOptionValue(args, i, arg);
+    else if (arg === '--every') options.every = Number(readOptionValue(args, i, arg));
+    else if (arg === '--once') options.once = true;
+    else if (arg === '--sources') options.sources = readOptionValue(args, i, arg).split(',').map((source) => source.trim()).filter(Boolean);
+    else if (!options.symbol) options.symbol = arg;
+    else throw new Error(`Unexpected argument: ${arg}`);
+
+    if (arg === '--symbol' || arg === '--interval' || arg === '--every' || arg === '--sources') i += 1;
+  }
+
+  if (!Number.isFinite(options.every) || options.every < 1) throw new Error('--every must be a positive number');
+  if (options.sources.length === 0) throw new Error('--sources must include at least one source');
+
+  return options;
+}
+
+function extractRows(text) {
+  const rows = [];
+  let row = undefined;
+
+  for (const line of text.split(/\r?\n/)) {
+    if (line.startsWith('- ')) {
+      if (row) rows.push(row);
+      row = {};
+      const [key, ...value] = line.slice(2).split(':');
+      row[key.trim()] = value.join(':').trim().replace(/^'|'$/g, '');
+    } else if (row && /^\s+[A-Za-z_][^:]*:/.test(line)) {
+      const [key, ...value] = line.trim().split(':');
+      row[key.trim()] = value.join(':').trim().replace(/^'|'$/g, '');
+    }
+  }
+
+  if (row) rows.push(row);
+  return rows;
+}
+
+function summarizeOutput(command, text) {
+  const rows = extractRows(text);
+  if (command === 'chart') return { rows, state: rows[0] || {} };
+  if (command === 'readings') return { count: rows.length, rows };
+  if (command === 'technicals') return { rows };
+  if (command === 'news') return { count: rows.length, headlines: rows.slice(0, 5) };
+  if (command === 'financials') return { count: rows.length, metrics: rows.slice(0, 12) };
+  return { count: rows.length, rows: rows.slice(0, 20) };
+}
+
+function probeOpenCli(command, args, options, config) {
+  const [executable, executableArgs, env] = openCliCommand(command, args, options, config);
+  const result = runCapture(executable, executableArgs, env);
+  return {
+    command,
+    ok: result.ok,
+    status: result.status,
+    data: result.ok ? summarizeOutput(command, result.stdout) : undefined,
+    error: result.ok ? undefined : (result.stderr || result.stdout).trim(),
+  };
+}
+
+function plannedOpenCliProbe(command, args, options, config) {
+  const [executable, executableArgs, env] = openCliCommand(command, args, options, config);
+  const platformCommand = commandForPlatform(executable, executableArgs);
+  return {
+    command,
+    ok: true,
+    dry_run: true,
+    executable: platformCommand.executable,
+    args: platformCommand.args,
+    env,
+  };
+}
+
+function runWatch(args, options, config) {
+  let watch;
+  try {
+    watch = parseWatchArgs(args);
+  } catch (error) {
+    console.error(error.message);
+    return 2;
+  }
+
+  if (!watch.symbol) {
+    console.error('Usage: tv watch <symbol> [--interval 1h] [--every 60] [--once] [--sources chart,readings,technicals,news,financials]');
+    return 2;
+  }
+
+  const probes = {
+    chart: () => probeOpenCli('chart', [watch.symbol, '--interval', watch.interval], options, config),
+    readings: () => probeOpenCli('readings', [], options, config),
+    technicals: () => probeOpenCli('technicals', [watch.symbol], options, config),
+    news: () => probeOpenCli('news', [watch.symbol], options, config),
+    financials: () => probeOpenCli('financials', [watch.symbol], options, config),
+    earnings: () => probeOpenCli('earnings', [], options, config),
+    'screen-cn': () => probeOpenCli('screen-cn', [], options, config),
+    'econ-calendar': () => probeOpenCli('econ-calendar', [], options, config),
+  };
+  const dryRunProbes = {
+    chart: () => plannedOpenCliProbe('chart', [watch.symbol, '--interval', watch.interval], options, config),
+    readings: () => plannedOpenCliProbe('readings', [], options, config),
+    technicals: () => plannedOpenCliProbe('technicals', [watch.symbol], options, config),
+    news: () => plannedOpenCliProbe('news', [watch.symbol], options, config),
+    financials: () => plannedOpenCliProbe('financials', [watch.symbol], options, config),
+    earnings: () => plannedOpenCliProbe('earnings', [], options, config),
+    'screen-cn': () => plannedOpenCliProbe('screen-cn', [], options, config),
+    'econ-calendar': () => plannedOpenCliProbe('econ-calendar', [], options, config),
+  };
+  const sources = options.dryRun ? dryRunProbes : probes;
+
+  while (true) {
+    const snapshot = {
+      symbol: watch.symbol,
+      interval: watch.interval,
+      checked_at: new Date().toISOString(),
+      sources: Object.fromEntries(watch.sources.map((source) => {
+        const probe = sources[source];
+        return [source, probe ? probe() : { command: source, ok: false, error: `Unknown source: ${source}` }];
+      })),
+    };
+
+    console.log(JSON.stringify(snapshot, null, 2));
+    if (watch.once) return 0;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(1, watch.every) * 1000);
+  }
+}
+
 function main() {
   const { options, args } = parseArgs(process.argv.slice(2));
   if (options.help || args.length === 0) {
@@ -159,6 +322,8 @@ function main() {
   if (command === 'config') return handleConfig(rest);
 
   const config = readConfig();
+  if (command === 'watch') return runWatch(rest, options, config);
+
   let executable;
   let executableArgs;
   let env;

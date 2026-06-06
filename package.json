@@ -9,7 +9,8 @@
   },
   "scripts": {
     "tv": "node bin/tv.js",
-    "test:wrapper": "node bin/tv.js --dry-run status && node bin/tv.js --dry-run --backend cdp quote && node bin/tv.js --dry-run --backend bbx status"
+    "test:wrapper": "node bin/tv.js --dry-run status && node bin/tv.js --dry-run --backend cdp quote && node bin/tv.js --dry-run --backend bbx status && node bin/tv.js --dry-run watch NASDAQ:AAPL --once --sources chart,readings,technicals,financials",
+    "test:watch:integration": "node bin/tv.js watch NASDAQ:AAPL --once --sources chart,readings,technicals,financials"
   },
   "license": "Apache-2.0",
   "repository": {

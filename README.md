@@ -42,6 +42,8 @@ npm run tv -- config set layout afALGzKj
 npm run tv -- status
 npm run tv -- chart NASDAQ:AAPL --interval 1h
 npm run tv -- readings
+npm run tv -- watch NASDAQ:AAPL --interval 1h --once
+npm run tv -- watch NASDAQ:AAPL --interval 1h --every 60
 
 # Fallback backends
 npm run tv -- --backend cdp quote      # tradingview-mcp-jackson CLI / localhost:9222
@@ -63,6 +65,20 @@ Persist the active TradingView layout once so commands do not fall back to a pri
 ```bash
 npm run tv -- config set layout <your-layout-id>
 ```
+
+### Watch mode
+
+`tv watch` turns the wrapper into a monitoring command. It probes chart state, indicator readings, technical ratings, news, and financials from the real OpenCLI/TradingView session and prints one JSON snapshot per cycle. Failing sources are kept in the snapshot with `ok: false` instead of aborting the whole watch run, so scanner/calendar outages do not break chart monitoring.
+
+```bash
+npm run tv -- watch NASDAQ:AAPL --interval 1h --once
+npm run tv -- watch NASDAQ:AAPL --interval 1h --every 60
+npm run tv -- watch NASDAQ:AAPL --sources chart,readings,technicals,financials,earnings,screen-cn,econ-calendar --once
+```
+
+This is monitoring/analysis only. It does not place orders or control a broker panel.
+
+Wrapper smoke tests stay dry-run only. Use `npm run test:watch:integration` when you want to verify the live OpenCLI/TradingView browser session.
 
 ## Commands
 
